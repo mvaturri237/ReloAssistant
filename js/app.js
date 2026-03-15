@@ -14,6 +14,9 @@
     let filteredTasks = [];
     let sortColumn = 'ETA';
     let sortDirection = 'asc';
+    const DEFAULT_DISPLAY_LIMIT = 10;
+    let displayLimit = DEFAULT_DISPLAY_LIMIT;
+    let showingAll = false;
     let statusChart = null;
     let categoryChart = null;
     let timelineChart = null;
@@ -123,11 +126,17 @@
         clearDataBtn.addEventListener('click', clearData);
 
         // Filters — clear card filter when user manually changes dropdowns
-        filterCategory.addEventListener('change', () => { clearCardHighlight(); applyFilters(); });
-        filterAssignee.addEventListener('change', () => { clearCardHighlight(); applyFilters(); });
-        filterPriority.addEventListener('change', () => { clearCardHighlight(); applyFilters(); });
-        filterStatus.addEventListener('change', () => { clearCardHighlight(); applyFilters(); });
+        filterCategory.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
+        filterAssignee.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
+        filterPriority.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
+        filterStatus.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
         resetFiltersBtn.addEventListener('click', resetFilters);
+
+        // Show More button
+        const showMoreBtn = document.getElementById('show-more-btn');
+        if (showMoreBtn) {
+            showMoreBtn.addEventListener('click', toggleShowMore);
+        }
 
         // Table sorting
         document.querySelectorAll('.sortable').forEach(th => {
@@ -1146,6 +1155,7 @@
         filterStatus.value = '';
         // Also clear any active card filter
         activeCardFilter = null;
+        showingAll = false;
         document.querySelectorAll('.card-clickable').forEach(c => c.classList.remove('card-active'));
         applyFilters();
     }
@@ -1171,7 +1181,12 @@
 
         taskTableBody.innerHTML = '';
 
-        filteredTasks.forEach(task => {
+        // Determine how many rows to display
+        const totalFiltered = filteredTasks.length;
+        const limit = showingAll ? totalFiltered : Math.min(displayLimit, totalFiltered);
+        const visibleTasks = filteredTasks.slice(0, limit);
+
+        visibleTasks.forEach(task => {
             const tr = document.createElement('tr');
             const isOverdue = isTaskOverdue(task, today);
             const isDueSoon = isTaskDueSoon(task, today);
@@ -1206,8 +1221,29 @@
             taskTableBody.appendChild(tr);
         });
 
-        showingCount.textContent = filteredTasks.length;
-        totalCount.textContent = tasks.length;
+        showingCount.textContent = limit;
+        totalCount.textContent = totalFiltered;
+
+        // Show/hide the "Show More" button
+        const showMoreBtn = document.getElementById('show-more-btn');
+        if (showMoreBtn) {
+            if (totalFiltered > DEFAULT_DISPLAY_LIMIT) {
+                showMoreBtn.classList.remove('hidden');
+                if (showingAll) {
+                    showMoreBtn.textContent = `▲ Show Less (top ${DEFAULT_DISPLAY_LIMIT})`;
+                } else {
+                    const remaining = totalFiltered - limit;
+                    showMoreBtn.textContent = `▼ Show All ${totalFiltered} Tasks (+${remaining} more)`;
+                }
+            } else {
+                showMoreBtn.classList.add('hidden');
+            }
+        }
+    }
+
+    function toggleShowMore() {
+        showingAll = !showingAll;
+        renderTable();
     }
 
     // ===== Helpers =====

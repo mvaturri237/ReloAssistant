@@ -1142,9 +1142,36 @@ body {
     font-size: 0.8rem;
     color: var(--text-secondary);
     border-top: 1px solid var(--border);
-    text-align: right;
     font-weight: 500;
     background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Show More button */
+.show-more-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.show-more-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.show-more-btn:active {
+    transform: translateY(0);
 }
 
 /* ===== Footer ===== */
