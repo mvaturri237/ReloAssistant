@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReloAssistant — Relocation Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <!-- PapaParse -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>✈️ ReloAssistant</h1>
+            <p class="subtitle">Maor & Omer's Relocation to California 🌴</p>
+        </div>
+        <div class="header-actions">
+            <button class="sync-btn" id="sync-btn" title="Sync from Google Sheets">
+                <span class="sync-icon" id="sync-icon">🔄</span> Sync
+            </button>
+            <span class="sync-status" id="sync-status"></span>
+            <!-- Hidden but kept in DOM for fallback functionality -->
+            <label class="upload-btn header-hidden" for="csv-file-input" title="Upload CSV manually">
+                📁 CSV
+                <input type="file" id="csv-file-input" accept=".csv" hidden>
+            </label>
+            <button class="clear-btn header-hidden" id="clear-data-btn" title="Clear loaded data">🗑️</button>
+        </div>
+    </header>
+
+    <!-- Upload Drop Zone (shown when no data) -->
+    <div id="drop-zone" class="drop-zone">
+        <div class="drop-zone-content">
+            <span class="drop-icon">✈️</span>
+            <h2>Welcome to ReloAssistant</h2>
+            <p>Click <strong>"🔄 Sync"</strong> to load data from Google Sheets</p>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem;">or drop a CSV file here as a fallback</p>
+            <button class="drop-sync-btn" id="drop-sync-btn">🔄 Sync from Google Sheets</button>
+        </div>
+    </div>
+
+    <!-- Dashboard (shown when data is loaded) -->
+    <main id="dashboard" class="dashboard hidden">
+
+        <!-- Relocation Timeline Bar -->
+        <section class="relocation-timeline-section" id="relocation-timeline">
+            <div class="relo-timeline-header">
+                <span class="relo-timeline-title">🛫 Relocation Journey</span>
+                <span class="relo-timeline-info" id="relo-timeline-info"></span>
+            </div>
+            <div class="relo-timeline-bar-wrapper">
+                <div class="relo-timeline-months" id="relo-timeline-months"></div>
+                <div class="relo-timeline-track">
+                    <div class="relo-timeline-fill" id="relo-timeline-fill"></div>
+                    <div class="relo-timeline-plane" id="relo-timeline-plane">✈️</div>
+                    <div class="relo-timeline-end-marker">🏁</div>
+                </div>
+                <div class="relo-timeline-dividers" id="relo-timeline-dividers"></div>
+            </div>
+        </section>
+
+        <!-- Summary Sentence -->
+        <section class="summary-sentence" id="summary-sentence"></section>
+
+        <!-- Insights Section -->
+        <section class="insights-section" id="insights-section"></section>
+
+        <!-- Summary Cards -->
+        <section class="cards-section">
+            <div class="card card-total">
+                <div class="card-icon">📋</div>
+                <div class="card-info">
+                    <span class="card-value" id="total-tasks">0</span>
+                    <span class="card-label">Total Tasks</span>
+                </div>
+            </div>
+            <div class="card card-done">
+                <div class="card-icon">✅</div>
+                <div class="card-info">
+                    <span class="card-value" id="completion-pct">0%</span>
+                    <span class="card-label">Completed</span>
+                </div>
+            </div>
+            <div class="card card-in-progress card-clickable" data-card-filter="in-progress" title="Click to filter In Progress tasks">
+                <div class="card-icon">🔄</div>
+                <div class="card-info">
+                    <span class="card-value" id="in-progress-tasks">0</span>
+                    <span class="card-label">In Progress</span>
+                </div>
+            </div>
+            <div class="card card-overdue card-clickable" data-card-filter="overdue" title="Click to filter Overdue tasks">
+                <div class="card-icon">⚠️</div>
+                <div class="card-info">
+                    <span class="card-value" id="overdue-tasks">0</span>
+                    <span class="card-label">Overdue</span>
+                </div>
+            </div>
+            <div class="card card-blocked card-clickable" data-card-filter="blocked" title="Click to filter Blocked tasks">
+                <div class="card-icon">🚫</div>
+                <div class="card-info">
+                    <span class="card-value" id="blocked-tasks">0</span>
+                    <span class="card-label">Blocked</span>
+                </div>
+            </div>
+            <div class="card card-due-soon card-clickable" data-card-filter="due-soon" title="Click to filter tasks Due This Week">
+                <div class="card-icon">⏰</div>
+                <div class="card-info">
+                    <span class="card-value" id="due-soon-tasks">0</span>
+                    <span class="card-label">Due This Week</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress Bar (segmented) -->
+        <section class="progress-section">
+            <div class="progress-header">
+                <span>Overall Progress</span>
+                <span id="progress-text">0 / 0 tasks done</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar progress-bar-done" id="progress-bar-done" style="width: 0%"></div>
+                <div class="progress-bar progress-bar-in-progress" id="progress-bar-in-progress" style="width: 0%"></div>
+            </div>
+            <div class="progress-legend">
+                <span class="legend-item"><span class="legend-dot done"></span> Done</span>
+                <span class="legend-item"><span class="legend-dot in-progress"></span> In Progress</span>
+                <span class="legend-item"><span class="legend-dot remaining"></span> Remaining</span>
+            </div>
+        </section>
+
+        <!-- Monthly Timeline -->
+        <section class="timeline-section">
+            <div class="chart-container timeline-chart-container">
+                <h3>📅 Monthly Task Timeline</h3>
+                <p class="timeline-subtitle">Task workload distribution by month — with a "today" marker</p>
+                <canvas id="timeline-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="charts-section">
+            <div class="chart-container">
+                <h3>📊 Status Distribution</h3>
+                <canvas id="status-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>📈 Progress by Category</h3>
+                <canvas id="category-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Assignee Breakdown -->
+        <section class="assignee-section">
+            <div class="assignee-card assignee-maor">
+                <h3>👨 Maor</h3>
+                <div class="assignee-stats" id="maor-stats"></div>
+                <div class="assignee-progress-bar-container" id="maor-segmented-bar"></div>
+                <span class="assignee-progress-text" id="maor-progress-text">0%</span>
+            </div>
+            <div class="assignee-card assignee-omer">
+                <h3>👩 Omer</h3>
+                <div class="assignee-stats" id="omer-stats"></div>
+                <div class="assignee-progress-bar-container" id="omer-segmented-bar"></div>
+                <span class="assignee-progress-text" id="omer-progress-text">0%</span>
+            </div>
+        </section>
+
+        <!-- Filters -->
+        <section class="filters-section">
+            <h3>📋 Task List</h3>
+            <div class="filters">
+                <select id="filter-category">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="filter-assignee">
+                    <option value="">All Assignees</option>
+                    <option value="Maor">Maor</option>
+                    <option value="Omer">Omer</option>
+                </select>
+                <select id="filter-priority">
+                    <option value="">All Priorities</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <select id="filter-status">
+                    <option value="">All Statuses</option>
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Done">Done</option>
+                    <option value="Blocked">Blocked</option>
+                </select>
+                <button class="reset-filters-btn" id="reset-filters-btn">✕ Reset</button>
+            </div>
+        </section>
+
+        <!-- Task Table -->
+        <section class="table-section">
+            <div class="table-wrapper">
+                <table id="task-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="Category" class="sortable">Category <span class="sort-arrow"></span></th>
+                            <th data-sort="Task" class="sortable">Task <span class="sort-arrow"></span></th>
+                            <th data-sort="Assignee" class="sortable">Assignee <span class="sort-arrow"></span></th>
+                            <th data-sort="Priority" class="sortable">Priority <span class="sort-arrow"></span></th>
+                            <th data-sort="Status" class="sortable">Status <span class="sort-arrow"></span></th>
+                            <th data-sort="ETA" class="sortable">ETA <span class="sort-arrow"></span></th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer" id="table-footer">
+                Showing <span id="showing-count">0</span> of <span id="total-count">0</span> tasks
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>ReloAssistant v1.2 — Data last synced: <span id="last-loaded">Never</span> · Auto-sync every 24h</p>
+    </footer>
+
+    <script src="js/app.js?v=1.5"></script>
+</body>
+</html>
