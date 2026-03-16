@@ -176,27 +176,10 @@
         <section class="filters-section">
             <h3>📋 Task List</h3>
             <div class="filters">
-                <select id="filter-category">
-                    <option value="">All Categories</option>
-                </select>
-                <select id="filter-assignee">
-                    <option value="">All Assignees</option>
-                    <option value="Maor">Maor</option>
-                    <option value="Omer">Omer</option>
-                </select>
-                <select id="filter-priority">
-                    <option value="">All Priorities</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                </select>
-                <select id="filter-status">
-                    <option value="">All Statuses</option>
-                    <option value="Not Started">Not Started</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Done">Done</option>
-                    <option value="Blocked">Blocked</option>
-                </select>
+                <div class="multi-select" id="filter-category" data-placeholder="All Categories"></div>
+                <div class="multi-select" id="filter-assignee" data-placeholder="All Assignees"></div>
+                <div class="multi-select" id="filter-priority" data-placeholder="All Priorities"></div>
+                <div class="multi-select" id="filter-status" data-placeholder="All Statuses"></div>
                 <button class="reset-filters-btn" id="reset-filters-btn">✕ Reset</button>
             </div>
         </section>
@@ -232,6 +215,6 @@
         <p>ReloAssistant v1.2 — Data last synced: <span id="last-loaded">Never</span> · Auto-sync every 24h</p>
     </footer>
 
-    <script src="js/app.js?v=1.5"></script>
+    <script src="js/app.js?v=1.6"></script>
 </body>
 </html>

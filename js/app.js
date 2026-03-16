@@ -42,6 +42,227 @@
         'Bella':            { emoji: '🐕', cssClass: 'cat-bella' },
     };
 
+    // ===== MultiSelect Component =====
+    class MultiSelect {
+        constructor(containerEl, options = {}) {
+            this.container = containerEl;
+            this.placeholder = containerEl.dataset.placeholder || 'Select...';
+            this.options = []; // [{value, label}]
+            this.selected = new Set();
+            this.onChange = options.onChange || null;
+            this.isOpen = false;
+
+            this._buildDOM();
+            this._bindEvents();
+
+            if (options.items) {
+                this.setOptions(options.items, options.defaultSelected);
+            }
+        }
+
+        _buildDOM() {
+            this.container.innerHTML = '';
+
+            // Button trigger
+            this.btn = document.createElement('button');
+            this.btn.type = 'button';
+            this.btn.className = 'multi-select-btn';
+            this.btn.innerHTML = `<span class="ms-label">${this.placeholder}</span><span class="ms-arrow">▼</span>`;
+            this.container.appendChild(this.btn);
+
+            // Dropdown panel
+            this.dropdown = document.createElement('div');
+            this.dropdown.className = 'multi-select-dropdown';
+            this.container.appendChild(this.dropdown);
+        }
+
+        _bindEvents() {
+            this.btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggle();
+            });
+
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                if (!this.container.contains(e.target)) {
+                    this.close();
+                }
+            });
+        }
+
+        setOptions(items, defaultSelected = null) {
+            // items: [{value, label}] or ['string', ...]
+            this.options = items.map(item => {
+                if (typeof item === 'string') return { value: item, label: item };
+                return item;
+            });
+
+            // Determine default selection
+            if (defaultSelected) {
+                this.selected = new Set(defaultSelected);
+            } else {
+                // Default: all selected
+                this.selected = new Set(this.options.map(o => o.value));
+            }
+
+            this._renderDropdown();
+            this._updateLabel();
+        }
+
+        _renderDropdown() {
+            this.dropdown.innerHTML = '';
+
+            // "Select All" option
+            const allDiv = document.createElement('div');
+            allDiv.className = 'multi-select-option ms-select-all';
+            const allCb = document.createElement('input');
+            allCb.type = 'checkbox';
+            allCb.id = `ms-all-${this.container.id}`;
+            allCb.checked = this.selected.size === this.options.length;
+            const allLabel = document.createElement('label');
+            allLabel.htmlFor = allCb.id;
+            allLabel.textContent = this.placeholder; // e.g. "All Statuses"
+            allDiv.appendChild(allCb);
+            allDiv.appendChild(allLabel);
+            this.dropdown.appendChild(allDiv);
+
+            // Divider
+            const divider = document.createElement('div');
+            divider.className = 'multi-select-divider';
+            this.dropdown.appendChild(divider);
+
+            // Individual options
+            this.options.forEach((opt, idx) => {
+                const optDiv = document.createElement('div');
+                optDiv.className = 'multi-select-option';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = `ms-${this.container.id}-${idx}`;
+                cb.value = opt.value;
+                cb.checked = this.selected.has(opt.value);
+                const label = document.createElement('label');
+                label.htmlFor = cb.id;
+                label.textContent = opt.label;
+                optDiv.appendChild(cb);
+                optDiv.appendChild(label);
+                this.dropdown.appendChild(optDiv);
+
+                // Click on row toggles checkbox
+                optDiv.addEventListener('click', (e) => {
+                    if (e.target !== cb) cb.checked = !cb.checked;
+                    this._handleOptionChange(opt.value, cb.checked);
+                    e.stopPropagation();
+                });
+            });
+
+            // "Select All" click handler
+            allDiv.addEventListener('click', (e) => {
+                if (e.target !== allCb) allCb.checked = !allCb.checked;
+                this._handleSelectAll(allCb.checked);
+                e.stopPropagation();
+            });
+        }
+
+        _handleOptionChange(value, checked) {
+            if (checked) {
+                this.selected.add(value);
+            } else {
+                this.selected.delete(value);
+            }
+            this._syncSelectAllCheckbox();
+            this._updateLabel();
+            if (this.onChange) this.onChange(this.getSelected());
+        }
+
+        _handleSelectAll(checked) {
+            if (checked) {
+                this.selected = new Set(this.options.map(o => o.value));
+            } else {
+                this.selected.clear();
+            }
+            // Update all individual checkboxes
+            this.dropdown.querySelectorAll('.multi-select-option:not(.ms-select-all) input[type="checkbox"]').forEach(cb => {
+                cb.checked = checked;
+            });
+            this._updateLabel();
+            if (this.onChange) this.onChange(this.getSelected());
+        }
+
+        _syncSelectAllCheckbox() {
+            const allCb = this.dropdown.querySelector('.ms-select-all input[type="checkbox"]');
+            if (allCb) {
+                allCb.checked = this.selected.size === this.options.length;
+            }
+        }
+
+        _updateLabel() {
+            const total = this.options.length;
+            const count = this.selected.size;
+            let html = '';
+
+            if (count === 0) {
+                html = `<span class="ms-label">None</span>`;
+            } else if (count === total) {
+                html = `<span class="ms-label">${this.placeholder}</span>`;
+            } else if (count === 1) {
+                const val = [...this.selected][0];
+                const opt = this.options.find(o => o.value === val);
+                html = `<span class="ms-label">${opt ? opt.label : val}</span>`;
+            } else {
+                html = `<span class="ms-label">${count} selected</span><span class="ms-count">${count}</span>`;
+            }
+            html += `<span class="ms-arrow">▼</span>`;
+            this.btn.innerHTML = html;
+        }
+
+        toggle() {
+            if (this.isOpen) {
+                this.close();
+            } else {
+                this.open();
+            }
+        }
+
+        open() {
+            // Close all other multi-selects first
+            [msCategory, msAssignee, msPriority, msStatus].forEach(ms => {
+                if (ms && ms !== this && ms.isOpen) ms.close();
+            });
+
+            this.isOpen = true;
+            this.dropdown.classList.add('open');
+            this.btn.classList.add('active');
+        }
+
+        close() {
+            this.isOpen = false;
+            this.dropdown.classList.remove('open');
+            this.btn.classList.remove('active');
+        }
+
+        getSelected() {
+            // If all selected, return empty array (meaning "no filter")
+            if (this.selected.size === this.options.length) return [];
+            return [...this.selected];
+        }
+
+        setSelected(values) {
+            this.selected = new Set(values);
+            this._renderDropdown();
+            this._updateLabel();
+        }
+
+        selectAll() {
+            this.selected = new Set(this.options.map(o => o.value));
+            this._renderDropdown();
+            this._updateLabel();
+        }
+
+        isAllSelected() {
+            return this.selected.size === this.options.length;
+        }
+    }
+
     // ===== DOM Elements =====
     const dropZone = document.getElementById('drop-zone');
     const dashboard = document.getElementById('dashboard');
@@ -78,12 +299,15 @@
     const maorProgressText = document.getElementById('maor-progress-text');
     const omerProgressText = document.getElementById('omer-progress-text');
 
-    // Filters
-    const filterCategory = document.getElementById('filter-category');
-    const filterAssignee = document.getElementById('filter-assignee');
-    const filterPriority = document.getElementById('filter-priority');
-    const filterStatus = document.getElementById('filter-status');
+    // Filters (multi-select instances, initialized later)
+    let msCategory = null;
+    let msAssignee = null;
+    let msPriority = null;
+    let msStatus = null;
     const resetFiltersBtn = document.getElementById('reset-filters-btn');
+
+    // Default status selections (excludes "Done")
+    const DEFAULT_STATUS_SELECTION = ['Not Started', 'In Progress', 'Blocked'];
 
     // Table
     const taskTableBody = document.getElementById('task-table-body');
@@ -125,11 +349,36 @@
         // Clear data
         clearDataBtn.addEventListener('click', clearData);
 
-        // Filters — clear card filter when user manually changes dropdowns
-        filterCategory.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
-        filterAssignee.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
-        filterPriority.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
-        filterStatus.addEventListener('change', () => { clearCardHighlight(); showingAll = false; applyFilters(); });
+        // Filters — initialize multi-select dropdowns
+        const filterOnChange = () => { clearCardHighlight(); showingAll = false; applyFilters(); };
+
+        msAssignee = new MultiSelect(document.getElementById('filter-assignee'), {
+            items: ['Maor', 'Omer'],
+            onChange: filterOnChange
+        });
+
+        msPriority = new MultiSelect(document.getElementById('filter-priority'), {
+            items: ['High', 'Medium', 'Low'],
+            onChange: filterOnChange
+        });
+
+        msStatus = new MultiSelect(document.getElementById('filter-status'), {
+            items: [
+                { value: 'Not Started', label: 'Not Started' },
+                { value: 'In Progress', label: 'In Progress' },
+                { value: 'Done', label: 'Done' },
+                { value: 'Blocked', label: 'Blocked' }
+            ],
+            defaultSelected: DEFAULT_STATUS_SELECTION,
+            onChange: filterOnChange
+        });
+
+        // Category is populated dynamically after data loads
+        msCategory = new MultiSelect(document.getElementById('filter-category'), {
+            items: [],
+            onChange: filterOnChange
+        });
+
         resetFiltersBtn.addEventListener('click', resetFilters);
 
         // Show More button
@@ -182,18 +431,18 @@
 
         // For status-based filters (in-progress, blocked), also set the dropdown
         if (filterType === 'in-progress') {
-            filterStatus.value = 'In Progress';
+            msStatus.setSelected(['In Progress']);
         } else if (filterType === 'blocked') {
-            filterStatus.value = 'Blocked';
+            msStatus.setSelected(['Blocked']);
         } else {
-            // For overdue/due-soon, clear the status dropdown since these are date-based
-            filterStatus.value = '';
+            // For overdue/due-soon, select all statuses since these are date-based
+            msStatus.selectAll();
         }
 
         // Clear other dropdowns to avoid conflicting filters
-        filterCategory.value = '';
-        filterAssignee.value = '';
-        filterPriority.value = '';
+        msCategory.selectAll();
+        msAssignee.selectAll();
+        msPriority.selectAll();
 
         applyFilters();
 
@@ -1076,31 +1325,28 @@
     // ===== Filters =====
     function populateCategoryFilter() {
         const categories = [...new Set(tasks.map(t => t.Category))].filter(Boolean).sort();
-        filterCategory.innerHTML = '<option value="">All Categories</option>';
-        categories.forEach(cat => {
+        const items = categories.map(cat => {
             const config = getCategoryConfig(cat);
-            const opt = document.createElement('option');
-            opt.value = cat;
-            opt.textContent = config.emoji + ' ' + cat;
-            filterCategory.appendChild(opt);
+            return { value: cat, label: config.emoji + ' ' + cat };
         });
+        msCategory.setOptions(items);
     }
 
     function applyFilters() {
-        const catVal = filterCategory.value;
-        const assigneeVal = filterAssignee.value;
-        const priorityVal = filterPriority.value;
-        const statusVal = filterStatus.value;
+        const selectedCats = msCategory.getSelected();
+        const selectedAssignees = msAssignee.getSelected();
+        const selectedPriorities = msPriority.getSelected();
+        const selectedStatuses = msStatus.getSelected();
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         filteredTasks = tasks.filter(t => {
-            // Standard dropdown filters
-            if (catVal && t.Category !== catVal) return false;
-            if (assigneeVal && t.Assignee !== assigneeVal) return false;
-            if (priorityVal && t.Priority !== priorityVal) return false;
-            if (statusVal && t.Status !== statusVal) return false;
+            // Multi-select dropdown filters (empty array = all selected = no filter)
+            if (selectedCats.length > 0 && !selectedCats.includes(t.Category)) return false;
+            if (selectedAssignees.length > 0 && !selectedAssignees.includes(t.Assignee)) return false;
+            if (selectedPriorities.length > 0 && !selectedPriorities.includes(t.Priority)) return false;
+            if (selectedStatuses.length > 0 && !selectedStatuses.includes(t.Status)) return false;
 
             // Card-based special filters (overdue / due-soon)
             if (activeCardFilter === 'overdue') {
@@ -1149,10 +1395,12 @@
     }
 
     function resetFilters() {
-        filterCategory.value = '';
-        filterAssignee.value = '';
-        filterPriority.value = '';
-        filterStatus.value = '';
+        // Reset category, assignee, priority to "all selected"
+        msCategory.selectAll();
+        msAssignee.selectAll();
+        msPriority.selectAll();
+        // Reset status to default (Not Started + In Progress + Blocked, excluding Done)
+        msStatus.setSelected(DEFAULT_STATUS_SELECTION);
         // Also clear any active card filter
         activeCardFilter = null;
         showingAll = false;
