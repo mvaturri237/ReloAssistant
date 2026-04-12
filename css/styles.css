@@ -100,6 +100,32 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Google Sheet link button */
+.sheet-link-btn {
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.3), rgba(52, 168, 83, 0.2));
+    color: white;
+    border: 1px solid rgba(66, 133, 244, 0.4);
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.sheet-link-btn:hover {
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.45), rgba(52, 168, 83, 0.35));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.25);
+    color: white;
+    text-decoration: none;
+}
+
 .sync-btn {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(52, 211, 153, 0.2));
     color: white;
